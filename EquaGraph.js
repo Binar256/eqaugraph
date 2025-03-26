@@ -154,6 +154,7 @@ let expAmount = 0;
 let newExp = false;
 let storeAvailable = false;
 let disableOutput = false;
+let outputBoxCentralReady = true;
 
 let expInputHistory = [];
 let expHistoryPosition = 0;
@@ -415,7 +416,7 @@ window.onload = function() {
             mathSymbols.style.height = "205px";
             mathSymbols.style.width = "560px";
             mathSymbolsHideout.style.height = "205px";
-            mathSymbolsHideout.style.width = "630px";
+            mathSymbolsHideout.style.width = "634px";
             moveThroughText.style.height = "205px";
             let compactMathSymbolsTop = inputBox.offsetHeight - 50;
             mathSymbolsHideout.style.top = compactMathSymbolsTop + "px";
@@ -465,7 +466,7 @@ window.onload = function() {
             mathSymbols.style.gridTemplateColumns = "repeat(3, 1fr)";
             moveThroughText.style.height = "210px";
             mathSymbolsHideout.style.height = "492px";
-            mathSymbolsHideout.style.width = "310px";
+            mathSymbolsHideout.style.width = "314px";
             mathSymbolsHideout.style.transform = "translate(485px, -430px)";
             mathSymbolsHideout.style.top = "0px";
             mathSymbols.style.top = "0px";
@@ -703,17 +704,20 @@ window.onload = function() {
     });
 
     function outputBoxCentral(command) {
-        if (disableOutput) {
+        if (disableOutput || !outputBoxCentralReady) {
             return;
         }
+        outputBoxCentralCmdExecuted = false;
         if (exp[currentExp] === undefined) {
             if (input === "") {
+                outputBoxCentralReady = true;
                 return;
             }
             defineExp();
         }
         if (input == "Invalid") {
             invalidInput();
+            outputBoxCentralReady = true;
             return
         } else {
             invalidInputBox.style.display = "none";
@@ -732,6 +736,7 @@ window.onload = function() {
                 storeExp();
                 break;
         }
+        outputBoxCentralReady = true;
     }
 
     function invalidInput() {
@@ -840,19 +845,28 @@ window.onload = function() {
             exp[currentExp].collapseButton.style.bottom = -exp[currentExp].expCalcContainer.scrollHeight + "px";
             exp[expId].expCalcContainer.style.maxHeight = exp[expId].expCalcContainer.offsetHeight + "px";
             exp[expId].collapseButton.addEventListener("click", function() {
-                clearTimeout(collapseButtonTm);
-                if (exp[expId].expCalcContainer.offsetHeight > 0 && exp[expId].collapseButton.innerText === "Collapse") {
-                    exp[pressedExpId].expCalcContainer.style.transition = "max-height 0.3s ease-out";
-                    exp[expId].expCalcContainer.style.maxHeight = "0px";
-                    exp[expId].collapseButton.innerText = "Expand";
-                    exp[expId].collapseButton.style.bottom = "-5px";
-                } else if (exp[expId].expCalcContainer.scrollHeight > exp[expId].expCalcContainer.offsetHeight && exp[expId].collapseButton.innerText === "Expand") {    
-                    exp[expId].expCalcContainer.style.maxHeight = exp[expId].expCalcContainer.scrollHeight + "px";
-                    exp[expId].collapseButton.innerText = "Collapse";
-                    collapseButtonTm = setTimeout(() => {
-                        exp[expId].collapseButton.style.bottom = -exp[expId].expCalcContainer.scrollHeight + "px";
-                    }, 300)
+                if (!disableOutput) {
+                    disableOutput = true;
+                    if (exp[expId].expCalcContainer.offsetHeight > 0 && exp[expId].collapseButton.innerText === "Collapse") {
+                        exp[pressedExpId].expCalcContainer.style.transition = "max-height 0.3 ease-out";
+                        exp[expId].expCalcContainer.style.maxHeight = "0px";
+                        exp[expId].collapseButton.innerText = "Expand";
+                        exp[expId].collapseButton.style.bottom = "-5px";
+                        collapseButtonTm = setTimeout(() => {
+                            disableOutput = false;  
+                        }, 300)
+                    } else if (exp[expId].expCalcContainer.scrollHeight > exp[expId].expCalcContainer.offsetHeight && exp[expId].collapseButton.innerText === "Expand") {    
+                        exp[expId].expCalcContainer.style.maxHeight = exp[expId].expCalcContainer.scrollHeight + "px";
+                        exp[expId].collapseButton.innerText = "Collapse";
+                        collapseButtonTm = setTimeout(() => {
+                            exp[expId].collapseButton.style.bottom = -exp[expId].expCalcContainer.scrollHeight + "px";
+                            disableOutput = false;
+                        }, 300)
+                    } else {
+                        disableOutput = false;
+                    }
                 }
+                
             });
         } else {
             exp[currentExp].collapseButton.style.display = "block";
@@ -862,7 +876,7 @@ window.onload = function() {
             exp[currentExp].expContainer.appendChild(exp[currentExp].collapseButton);
         }
     }
-// actionbuttons menu is not shown when outputbox is scaled
+
     for (let i = 0; i < 3; i++) {
         actionButtons[i] = document.getElementById(actionButtonsElements[i]);
         actionButtons[i].addEventListener("mousedown", function(event) {
@@ -879,7 +893,10 @@ window.onload = function() {
             actionButtons[i].style.backgroundColor = mathSymbolsColor;
         });
         actionButtons[i].addEventListener("click", function() {
+            actionButtons[i].disabled = true;
             actionButtonsClick(actionButtonsElements[i]);
+            actionButtons[i].disabled = false;
+
         });
         if (i === 0) {
             actionButtons[i].style.borderTopLeftRadius = "5px";
@@ -967,8 +984,7 @@ window.onload = function() {
                 editExp();
                 break;
             case "removeButton":
-                removeExp();
-                checkExp();
+                removeExp(button);
                 break;
             case "deleteButton":
                 deleteExp();
@@ -1004,14 +1020,36 @@ window.onload = function() {
         expCount = exp[currentExp].expressions.length;
     }
 
-    function removeExp() {
-        exp[pressedExpId].expDiv[pressedExpCountId].remove();
+    function removeExp(button) {
+        if (button === "removeButton") {
+            if (exp[pressedExpId].expContainer.childNodes.length < 3 && currentExp !== pressedExpId) {
+                deleteExp();
+                return;
+            }
+            disableOutput = true;
+            exp[pressedExpId].expDiv[pressedExpCountId].style.pointerEvents = "none";
+            exp[pressedExpId].expDiv[pressedExpCountId].style.overflow = "hidden";
+            exp[pressedExpId].expDiv[pressedExpCountId].style.transition = "max-height 0.3s ease-out";
+            exp[pressedExpId].expDiv[pressedExpCountId].style.maxHeight = exp[pressedExpId].expDiv[pressedExpCountId].offsetHeight + "px";
+            setTimeout(() => {  
+                exp[pressedExpId].expDiv[pressedExpCountId].style.maxHeight = "0px";
+            }, 0);
+            setTimeout(() => {
+                exp[pressedExpId].expDiv[pressedExpCountId].remove();
+                checkExp();
+                disableOutput = false;
+            }, 300)
+        } else {
+            exp[pressedExpId].expDiv[pressedExpCountId].remove();
+        }
+        
     }
 
     function checkExp() {
         let savedCurrentExp = currentExp;
         currentExp = pressedExpId;
         outputBoxCentral("write");
+        // write wont work cuz disableOutput === true
         currentExp = savedCurrentExp;
         if (currentExp !== pressedExpId && exp[pressedExpId].collapseButton.innerText === "Collapse") {
             exp[pressedExpId].expCalcContainer.style.transition = "none";
@@ -1029,9 +1067,10 @@ window.onload = function() {
 
     function deleteExp() {
         if (currentExp !== pressedExpId) {
+            disableOutput = true;
             exp[pressedExpId].div.style.maxHeight = exp[pressedExpId].div.offsetHeight + "px";
             exp[pressedExpId].div.style.overflow = "hidden";
-            disableOutput = true;
+            exp[pressedExpId].div.style.pointerEvents = "none";
             setTimeout(() => {
                 exp[pressedExpId].div.style.maxHeight = "0px";
             }, 10);

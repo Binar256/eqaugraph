@@ -301,7 +301,7 @@ button:focus-visible {
 #settingsHideout {
     position: absolute;
     height: 300px;
-    width: 200px;
+    width: 204px;
     transform: translate(-450px, -280px);
     background-color: var(--page-color);
     z-index: 7;
@@ -432,7 +432,7 @@ button:focus-visible {
 #mathSymbolsHideout {
     position: absolute;
     height: 492px;
-    width: 310px;
+    width: 314px;
     background-color: var(--page-color);
     transform: translate(485px, -430px);
     z-index: 2;
